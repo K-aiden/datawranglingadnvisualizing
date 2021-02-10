@@ -1,0 +1,141 @@
+---
+title: "istyazılımfinalnisakadirspoti"
+author: "121251503 Kadir Aydın"
+date: "14 01 2021"
+output: html_document
+---
+
+```{r}
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(stringr)
+library(plotly)
+```
+```{r}
+spotify<-read.csv("C:/data.csv")
+spotifyTbl<-tbl_df(spotify);spotifyTbl
+spotifyArt<-read.csv("C:/data_by_artist.csv")
+spotifyArtTbl<-tbl_df(spotifyArt);spotifyArtTbl
+spotifyGenre<-read.csv("C:/data_by_genres.csv")
+spotifyGenreTbl<-tbl_df(spotifyGenre);spotifyGenreTbl
+spotifyYear<-read.csv("C:/data_by_year.csv")
+spotifyYearTbl<-tbl_df(spotifyYear);spotifyYearTbl
+spotifyGenreW<-read.csv("C:/data_w_genres.csv")
+spotifyGenreWTbl<-tbl_df(spotifyGenreW);spotifyGenreWTbl
+```
+
+
+Akustik şarkıların oranının çok değişkenlik gösterdiğini düşündüğümüzden dolayı filtrelemek istedik;
+
+Şarkıların akustiklerinin 0.5'ten büyük olanlarınım popülerliği yüksek olanlara göre sıralattırdıktan sonra oluşturuğumuz yeni verinin dans edilebilirliğine göre yoğunluk grafiğini çıkartıp incelemek istedik.
+
+```{r}
+deneme<-spotifyTbl%>%filter(acousticness>0.5)%>%arrange(desc(popularity))
+ggplot(deneme,aes(x=danceability))+geom_density()
+```
+R session belli bir süre sonra kullanılan grafikleri ve yapılan işlemlerden sonra otomatik olarak verilen belli bir sınırlı hafızayı aştığımız için hafıza limiti arttırdık.
+```{r}
+memory.limit(24231)
+
+```
+
+
+
+Yıllara göre şarkılarının dans edilebilirlik puanlandırmalarını tempolarına göre değerlendirdik.
+```{r}
+ggplot(spotifyYearTbl,aes(year,danceability,fill=tempo))+geom_col()
+
+```
+
+Tekrardan dans edilebilirliği 0.5'ten büyük olanları seçip fakat bu sefer sanatçıların hangileri olduklarını görebilmek için sanatçı verimizi seçtik. Burda asıl amacımız şarkıların sürelerine göre canlılığı üzerinde etkisi nasıl oluyor onları incelemek istedik. Şarkıların süreleri milisaniye cinsinden verildiği için aynı zamanda kolay anlaşılması üzerine süreleri dakika cinsinden gösteren yeni bir sütun oluşturduk.
+
+```{r}
+library(tidyr)
+durationlive<-spotifyArtTbl%>%select(artists,danceability,duration_ms,liveness,popularity)%>%filter(danceability>0.5)%>%mutate(duration_m=duration_ms/60000)%>%arrange(desc(duration_m))
+durationlive
+top10durationlive<-head(durationlive,10);top10durationlive
+```
+Çok uzun süreli şarkıların var olduğunu görebiliyoruz bu doğal olarak dans edilebilirlik ortalamanın üzerinde olsa da canlılığı azaltmış durumda. Canlılığında 0.5'ten yüksek olan şarkıların sürelerine bakıp hangi sanatçılar tarafından yapıldığını bulmak istersek;
+
+```{r}
+liveness05<-durationlive%>%filter(liveness>0.5)
+liveness10<-head(liveness05,10);liveness10
+```
+
+```{r}
+ggplot(liveness10,aes(duration_m,liveness,fill=artists))+geom_bar(stat = "identity")
+
+```
+Canlılık arttıkça sürelerinde azaldığını görüyoruz ve ayrıca daha az sürelerde popülerlik de artıyor gibi görünüyor.
+
+Popülerlik arttıkça sürelerdeki değişim nasıl oluyor incelemek istersek;
+```{r}
+livepop<-liveness05%>%arrange(desc(popularity));livepop
+```
+
+```{r}
+ggplot(livepop,aes(duration_m,popularity))+geom_smooth()
+```
+
+
+yıllara göre enerji yoğunluğu
+
+```{r}
+
+par(mfrow=c(2,2))
+
+Newdt<-spotifyYearTbl%>%filter(year<=1944)
+d <- density(Newdt$energy)
+plot(d, main="Energy Density of 1921-1944")
+polygon(d, col="grey", border="white")
+
+Newdt2<-spotifyYearTbl%>%filter(year<=2000 & year>1944)
+d1<- density(Newdt2$energy)
+plot(d1, main="Energy Density of 1945-2000")
+polygon(d1, col="grey", border="white")
+
+Newdt3<-spotifyYearTbl%>%filter(year<=2020 & year>2000)
+d2<- density(Newdt3$energy)
+plot(d2, main="Energy Density of 2000-2020")
+polygon(d2, col="grey", border="white")
+```
+
+1921-1944 yılları arasındaki şarkıların enerjileri diğer yıllara göre daha düşük enerjili şarkılar iken günümüz yani 2000-2020 yılları arasındaki şarkılar daha enerjik şarkılardır. 1945-2000 li yıllar arasında şarkıların hem düşük hem yüksek enerjiye sahip olduğu gözlenmektedir. 
+
+
+```{r}
+par(mfrow=c(2,2))
+System<-spotify%>%
+filter(artists=="['System Of A Down']")
+
+ggplot(System,aes(year, popularity, fill="pink",))+geom_col()+labs(
+       title ="System Of A Down Popularity")
+
+
+
+Lil<-spotify%>%
+filter(artists=="['Lil Wayne']")
+
+ggplot(Lil,aes(year, popularity, fill="pink"))+geom_col()+labs(
+       title ="Lil Wayne Popularity")
+
+
+Stan<-spotify%>%
+filter(artists=="['Eminem']")
+
+ggplot(Stan,aes(year, popularity, fill="pink"))+geom_col()+labs(
+       title ="Eminem Popularity")
+
+
+M<-spotify%>%
+filter(artists=="['Metallica']")
+
+ggplot(M,aes(year, popularity, fill="pink"))+geom_col()+labs(
+       title ="Metallica Popularity")
+
+```
+
+Dünyaca popüler bazı sanatçıların popülerliğini kıyaslamak için bir grafik oluşturduk. Oluşturduğumuz bu grafikte Eminem'in diğer seçtiğimiz sanatçılardan daha popüler olduğunu görmekteyiz. System of A Down grubu 2000li yıllarda popülerliğe sahipken Eminem, Metallica ve Lil Wayne uzun geçmişten günümüze belirli alarıklarla uzun süreli popülerliğe sahiptirler.
+
+

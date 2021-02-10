@@ -1,0 +1,130 @@
+---
+title: "nisayazılım"
+author: "Kadir ve Diğerleri"
+date: "10 02 2021"
+output: pdf_document
+---
+
+```{r warning=FALSE}
+library(readr)
+Top50<-read_csv("C:/top10s.csv")
+head(Top50)
+
+```
+
+
+
+
+```{r warning=FALSE}
+library(dplyr)
+
+library(ggplot2)
+```
+
+en popüler 10 şarkıcıyı ve şarkıyı görüntüleyelim:
+
+```{r warning=FALSE}
+Popularity<-Top50 %>% arrange(desc(pop)) 
+head(Popularity,10)
+```
+
+
+```{r warning=FALSE}
+ggplot(head(Popularity,10),aes(artist,pop))+geom_point(size=3,color="orange")
+
+```
+
+
+Maroon5 2010-2019 yılları arasında en yüksek popülerliği olan şarkıya sahipmiş 
+Lizzo ve Marshmello'nun şarkıları aynı derece popülerliğe ve bu 10 şarkı arasından en az popülerliğe sahipmiş.
+
+Şimdi bu 10 şarkı için bulduğumuz popülerliğin tüm şarkılar için en düşük popülerliğini bulacak bir kod yazdıralım. 
+```{r warning=FALSE}
+popazalan<-Top50 %>% arrange(pop)
+head(popazalan,10)
+```
+Popülerliği azalan sıraya göre dizdiğimiz bu şarkıların saçılım grafiğinde en düşük popülerliğe sahip şarkıcının ismini gösterelim:
+
+```{r warning=FALSE}
+gplot<-ggplot(head(popazalan,10),aes(artist,pop))+geom_point(size=2)
+p<-gplot+geom_text(aes(label=ifelse(pop==min(pop),as.character(artist),'')),hjust=0,vjust=0)
+p
+```
+Adele, Fergie , Justin Timberlake , Martin Solveig , P!nk şarkıcılarının 2010-2019 yılları arasında ki şarkıları'nın popülerliğinin 0 olduğunu görüyoruz.
+
+Bu şarkıcılardan Adele ve Justin Timberlake diğer şarkıcılara göre daha çok tanınmaktadır. Bu tanınan şarkıcıların 2010-2019 yılları arasında başka şarkıları var mı varsa da popülerliğini gösteren bir grafik oluşturalım.
+```{r warning=FALSE}
+AnJ<-Top50%>%filter(artist==c("Adele","Justin Timberlake"))
+AnJ
+
+ggplot(AnJ,aes(pop,title))+geom_point(aes(color=artist))+theme(axis.text.y= element_text
+                              (angle = 50))
+```
+Adel'in 2010 ve 2019 yılları arasında spotifyda 6 şarkısı olduğunu ve bunların 3'ünün popülerliğinin 50 den fazla olduğunu görüyoruz.
+Justin Timberlake'in 2010 ve 2019 yılları arasında spotifyda 5 şarkısı olduğunu ve bunların 4 ünün popülerliğinin 50 den fazla olduğunu görüyoruz.
+
+
+```{r warning=FALSE}
+Year<-lubridate::ymd(Top50$year, truncated = 2L)
+
+ggplot(Top50,aes(Year,dB,fill=Year))+geom_col()
+
+```
+
+2012 yılında ki şarkıların seslerinin daha yüksek olduğu sonucuna varabiliriz. 
+2012 deki şarkıları görüntüleyip hangi sanatçıların yüksek sesli müzik yaptığını bulalım 
+
+```{r warning=FALSE}
+newDt<-Top50%>%filter(year==2012)%>%arrange(desc(dB))%>%select(title,artist,dB,year,pop,dnce)
+
+library(plotrix)
+OneDirection<-sum(newDt$pop[which(newDt$artist=="One Direction")])
+NickiMinaj<-sum(newDt$pop[which(newDt$artist=="Nicki Minaj")])
+slices<-c(OneDirection,NickiMinaj)
+lbls<-c("OneDirection","NickiMinaj")
+pct<-round(slices/sum(slices)*100)
+lbls = paste(lbls,pct)
+lbls = paste(lbls,"%",sep = "")
+pie(slices, labels = lbls,main = "Popülerlik"
+,col = c("plum1","slateblue4"))
+```
+
+dB si en yüksek yani en sesli müziğin olduğu iki sanatçının popülerliğini karşılaştırdığımızda One Direction'ın popülerliğinin Nicki Minaj'dan %4 fazla olduğu sonucuna varıyoruz.
+
+
+
+```{r warning=FALSE}
+ggplot(Top50,aes(Year,nrgy,fill=pop))+geom_col()
+
+```
+
+En düşük enerjili şarkılar 2019 yılındaki şarkılar olduğunu görüyoruz. En yüksek enerjili şarkıların 2015 yılındaki şarkılar olduğunu görüyoruz.
+
+
+Yüksek 'akustik' olan sarkilar cogunlukla dogal akustik seslerden (akustik gitar, piyano, orkestra) olusurken, dusuk 'akustik' olan sarkilar cogunlukla elektrik seslerinden (elektrikli gitarlar, sentezleyiciler) olusur. (otomatik ayarli vokaller vb.). Akustiklige gore sarkilari siralayalim.
+
+```{r warning=FALSE}
+
+Akustik<-Top50%>%arrange(acous)%>%select(title,artist,acous)
+head(Akustik)
+
+```
+Lady Gaganın Bad Romance şarkısının akustiği en düşük şarkılardandır. Yani buradan bu şarkının elektrikli seslerden oluştuğunu söyleyebiliriz.
+
+
+Enerji ve akustiğe göre saçılım grafiği oluşturalım. 
+```{r warning=FALSE}
+ggplot(Top50,aes(x=nrgy,y=acous))+geom_point(colour = "brown" , size=3 )+theme(axis.text.x = element_text
+                              (angle = 90))
+```
+
+Bu oluşan grafikte Lady Gaga'nın şarkılarını başka bir renkte gösterelim:
+
+```{r warning=FALSE}
+Top50$sarkici<-NA
+Top50$sarkici[which(Top50$artist=="Lady Gaga")]<-"Lady Gaga"
+Top50$sarkici[which(Top50$artist!="Lady Gaga")]<-"diger"
+ggplot(Top50,aes(x=nrgy,y=acous,shape=factor(sarkici)))+geom_point(aes
+    (colour=factor(sarkici)))+theme(axis.text.x = element_text(angle = 90))
+```
+Lady Gaga'nın  akustiği düşük olan şarkılarının enerjilerinin daha yüksek olduğunu görmekteyiz.
