@@ -1,0 +1,104 @@
+---
+title: "müzikdata"
+author: "121517047, Raif Burak Durmaz"
+date: "04 02 2021"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r}
+master_song_data <- read.csv("C:/Users/Burak/Desktop/master_song_data.csv")
+```
+
+
+```{r}
+summary(master_song_data)
+length(master_song_data)
+
+```
+#Summary koduyla verisetimizi çalıştırdığımızda verimizin 206 gözlemi olduğunu ve 15 değişkeni olduğunu görüyoruz.
+
+```{r}
+table(master_song_data$Audio_class)
+table(master_song_data$Mental_health_severity_class)
+```
+# Verimizde toplam 29 mutlu, 48 rahat, 106 üzgün,23 gergin müzik olduğunu görüyoruz. Burdan şu sonuca varabiliriz ki insanlar genelllikle üzgün ve melankolik yapıda ve hep bu tarz müzik dinlemeye yöneliyorlar.
+#Ayrıca veri setimizde akıl sağlığı şiddetine değişkenine göre akıl sağlığı iyi olanların saysı 21, akıl sağlığı seviyesi düşük olanlar 42 ve akıl sağlığı ortalama olan 143 gözlem olduğunu görüyoruz.
+
+
+```{r}
+library(ggplot2)
+ggplot(master_song_data, aes(x= Danceability, y=Audio_class))+geom_smooth(col="red")
+```
+
+#Bu tablodan şu sonucu çıkartabiliriz müzik duygu türü mutluyken dans edebilme oranı fazla iken müzik duygu türü kötüyken dans edilebilme oranı daha az oluyor.
+
+
+
+```{r}
+ggplot(data = master_song_data) +
+geom_point(mapping = aes(x = Danceability, y = Mental_health_severity_class)) +
+facet_wrap(~ `Audio_class`)+theme_classic()
+
+```
+#Bu tablomuza göre sakinken ve akıl sağlık seviyemiz ortalamayken dansedilebilirlik oranımız daha fazla oluyor.
+
+
+```{r}
+ggplot(master_song_data,aes(x=Audio_class,y=Audio...Lyrics.analysis,fill=Artist)) +geom_col()
+
+```
+#Bu grafikte ise hangi şarkıcıların hangi hangi duygu durumuna göre şarkı yaptığını görüyoruz ve grafiğimize göre şarkıcılar en çok üzgün şarkı ortaya çıkarma eğilimindedir.
+
+```{r}
+library(dplyr)
+y <- master_song_data %>% group_by(Audio_class)
+ggplot(data=y,aes(x=Audio_class,y=Loudness)) + geom_col(aes(fill=Audio_class)) + coord_flip() + theme_minimal() + theme(legend.position = "none")
+```
+# Bu grafiğimizde ise en çok üzgünken yüksek sesle müzik dinlendiğini ve gerginken en düşük ses seviyesinde müzik dinlediğini görüyoruz. 
+```{r}
+ggplot(master_song_data, aes(Danceability))+ geom_histogram(fill= "white", col="red")
+
+```
+#Burada ise dansedilebilirlikle ilgili bir histogram gradiği çizdik. Bu grafiğe göre de 0.25 seviyesiyle 0.5 seviyesi arasında dansedilebilirlik oranı en yüksektir.
+
+
+
+```{r}
+library(ggplot2)
+qplot(Mental_health_severity_class, data=master_song_data, geom="density", fill=Audio...Lyrics.analysis, alpha=I(.5),
+   ylab="Density")
+
+```
+#Bu grafiğimizde ise müziklerin sözlerinin hangi duyguya hitap ettiğiyle ilgili bir çalışma yaptık. Grafiğimize göre ise şarkı sözlerinin anlamlarına karşılık gelen duygular arasında daha yaygın olarak üzgün şarkı sözleri bulunmaktadır.
+
+```{r}
+qplot(Danceability, data=master_song_data, geom="density", fill=Mental_health_severity_class, alpha=I(.4))
+```
+#Burada oluşturduğumuz yoğunluk grafiğe göre dansedilebilirlik oranının en çok mutlu olduğunda ve en az üzgün olduğunda görebiliyoruz.
+
+
+
+
+```{r}
+model1<- lm(Danceability~ Audio_class, master_song_data )
+summary(model1)
+```
+#Şimdi ise ruh haliyle dansedilebilirlik arasında bir regresyon tablosu oluşturduk. Bu tabloya göre modelimiz anlamlıdır.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
