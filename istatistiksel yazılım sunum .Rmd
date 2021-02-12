@@ -1,0 +1,478 @@
+---
+title: "StatisticalSoftware"
+author: "Kadir Aydın,İlayda Türedi,Nisa Yıldız,Raif Burak Durmaz" 
+date: "10 02 2021"
+output: html_document
+---
+
+                                        WRANGLİNG AND VİSUALİZİNG MUSİCAL DATA  
+                                        
+
+Analiz etmek için kullanacağımız kütüphaneler;
+
+```{r message=FALSE, warning=FALSE}
+library(summarytools)
+library(ggplot2)
+library(tidyverse) 
+library(plotly)
+library(readr)
+library(dplyr)
+library(stringr)
+```
+
+
+İlk olarak analiz edilerek görselleştirmek üzere kullanılan veri seti müzik akış modelleri ile ilgili bir veri setidir. Bu veriler, veri seti özetlerinden de anlaşılacağı üzere 50 gözlem ve 14 değişkenden oluşmaktadır. 
+
+```{r message=FALSE, warning=FALSE}
+müzik_akış_modelleri<- read.csv("C:/Users/tured/OneDrive/Belgeler/müzik akışı modelleri spotfy.csv")
+head(müzik_akış_modelleri)
+str(müzik_akış_modelleri)
+```
+
+```{r message=FALSE, warning=FALSE}
+attach(müzik_akış_modelleri)
+Energy<- as.numeric(müzik_akış_modelleri$Energy)
+Danceability<-as.numeric(müzik_akış_modelleri$Danceability)
+Liveness<-as.numeric(müzik_akış_modelleri$Liveness)
+Positivity<-as.numeric(müzik_akış_modelleri$Positivity)
+```
+
+İlk olarak ele almak istediğimiz değişkenlerden biri olan müziklerin enerjilerini belirten enerji değişkeni için artsitlerin yapmış olduğu müziklerin enerjilerini birbirleri ile kıyaslayabilmek amacıyla basit bir bar plot çizdirdik. 
+
+```{r message=FALSE, warning=FALSE}
+ggplot(müzik_akış_modelleri, aes(x = Energy, color = Artist, fill = Loudness.in.db.)) + geom_bar()
+
+```
+
+Bu plotta görüldüğü üzere genel olarak bazı artistlerin çoğu müziklerinin aynı ve 1 derecesinde olduğu görülmektedir, fakat görüldüğü üzere her artistin enerji seviyesinin yüksek olduğu istisna olarak da kabul edilebilir olan 2 ve 3 seviyesinde enerjide olduğu  görülen belli şarkıları da veri setinde mevcuttur.  
+
+Bu değişkeni daha iyi ele alabilmek ve açıklayabilmek amacıyla regresyon modeli kurmayı tercih ettik. 
+
+İlk modelimizi enerji değişkenini bağımsız değişken seçerek ses yüksekliği canlılık pöpülerlik değişkenlerini ise bağımsız değişken seçerek bir model kurduk.Bu modeldeki düzeltilmiş R^2 değerine bakarak kurulan bu model anlamlıdır yani enerji değişkeninin bağımsız değişkeneler olan ses yüksekliği pöpülerite ve  enerji deses yüksekliği ile yüzde 67si açıklanabilir.  
+
+```{r message=FALSE, warning=FALSE}
+model1_müzikakış<- lm(Energy ~ Loudness.in.db.+Popularity+Liveness)
+summary(model1_müzikakış) # düzeltilmiş r2 0.6752
+qf(1-0.05, 2, 47)
+```
+Fakat bu modelde görüldüğü üzere ses yüksekliği harici diğer iki değişken anlamsız gelerek modele katkısının olmadığı anlaşıldığı için modelden canlılık değişkenini çıkartarak yeni bir model kurduk. Bu modelde de iki değişkenimiz de anlamlı geldi ve model açıklanabirliğimiz de az da olsa arttığı için hem gereksiz değişken kullanmamak adına hem de daha iyi açıklanabirlikte model kullanmak amacıyla model 2 tercih edilir. 
+reg modeli2
+
+```{r message=FALSE, warning=FALSE}
+model2_müzikakış<- lm(Energy ~ Loudness.in.db.+Popularity)
+summary(model2_müzikakış) # düzeltilmiş r^2 0.6807
+```
+tahmin edilen model denklemimiz de bu şekildedir. 
+
+```{r message=FALSE, warning=FALSE}
+model2_müzikakış$coefficients<- round(model2_müzikakış$coefficients, 4)
+paste("Tahmin edilen model : Energy =", model2_müzikakış$coefficients[1], '+', model2_müzikakış$coefficients[2], 'Loudness.in.db. +', model2_müzikakış$coefficients[3], 'Popularity')
+```
+
+modelimiz için ekstra olarak  güven aralıkları da bu şekildedir. 
+
+```{r message=FALSE, warning=FALSE}
+confint(model2_müzikakış)
+```
+
+Gerekli düzeltmeleri yaparak modelde anlamlı olan değişkenleri birbirleri ile ilişkilendirerek grafik çıkarmak istedik. 
+
+Daha sonrasında ise enerji değişkeni ile ilgili olan  Positivity, Liveness değişkenlerini kullanarak bu iki değişken için geom_point grafiği çizdirdik ve şarkı canlılığı yüksek derecede olan artist isimlerini belirttik görüldüğü üzere Linkin Park ve Drake en yüksek derecede şarkılarında canlılık içerdiği anlaşılıyor. 
+
+```{r message=FALSE, warning=FALSE}
+Artist<- as.factor(müzik_akış_modelleri$Artist)
+Genre<- as.factor(müzik_akış_modelleri$Genre)
+gg<- ggplot(data=müzik_akış_modelleri, aes(x = Positivity, y = Liveness, group=Artist, color=Artist)) +
+  geom_point(size = 3) +
+  geom_smooth(method="lm", se= FALSE)
+gg + geom_text(aes(label  = ifelse(Liveness>50, Artist,""),hjust=0,vjust=0))
+```
+
+Bu iki grafikte ise öncelik olarak şarkılarında yüksek canlılık değerleri içeren linkin park ve diğerleri ile ilgili
+box plot, ikinci olarak ise veri setini yeniden çekerek tüm artislerin canlılık değerlerini içeren box plot çizdirdik. 
+
+```{r message=FALSE, warning=FALSE}
+   müzik_akış_modelleri$Artist[which(müzik_akış_modelleri$Artist=="Linkin park")]<-"Linkin park"
+   müzik_akış_modelleri$Artist[which(müzik_akış_modelleri$Artist!="Linkin park")]<-"DİĞER"
+
+   ggplot(müzik_akış_modelleri,aes(x=Liveness ,y=Loudness.in.db. , shape = factor(Artist), fill = factor(Artist))) + geom_boxplot(aes(colour = factor(Artist)))
+  
+   müzik_akış_modelleri<- read.csv("C:/Users/tured/OneDrive/Belgeler/müzik akışı modelleri spotfy.csv")
+   müzik_akış_modelleri<-tbl_df(müzik_akış_modelleri)
+   
+   ggplot(müzik_akış_modelleri,aes(x=Liveness ,y=Loudness.in.db. , shape = factor(Artist), fill = factor(Artist))) + geom_boxplot(aes(colour = factor(Artist)))
+   
+```
+
+Artist isimleri yeniden geri gelmesi için tekrardan veri setini çektik ve bu sefer popülariteyi ele almak için veri seti üzerinde bazı sıralamalar yaparak yeni bir veri seeti tanımladık. 
+
+```{r message=FALSE, warning=FALSE}
+   müzik_akış_modelleri<- read.csv("C:/Users/tured/OneDrive/Belgeler/müzik akışı modelleri spotfy.csv")
+   müzik_akış_modelleri<-tbl_df(müzik_akış_modelleri)
+   head(müzik_akış_modelleri[order(müzik_akış_modelleri$Popularity,decreasing=T),],20) 
+   Popülerite<- müzik_akış_modelleri%>%select(Title, Artist, Genre, Energy, Danceability, Popularity)%>% arrange(desc(Popularity))
+   head(Popülerite, 10) # yeni veri seti
+```
+
+Oluşturulan veri setinden popülarite değişkenini ile ilgili müzik türüne göre renklendirilen yoğunluk grafiği çizdirdik. 
+
+```{r message=FALSE, warning=FALSE}
+ggplot(Popülerite, aes(x = Popularity, fill= factor(Genre), alpha=4))+ stat_density()
+```
+
+Analiz edeceğimiz diğer bir veri setimiz müzik türü ve içecekler ile ilişkilendirilen bir veri seti. 
+
+```{r message=FALSE, warning=FALSE}
+veriseti<- read.csv("C:/Users/tured/OneDrive/Belgeler/müzik türü cinsiyet sınırlaması data.csv")
+head(veriseti)
+```
+
+Veri setimiz ile ilgili gerekli düzeltmeleri yaptık.  
+
+```{r message=FALSE, warning=FALSE}
+veriseti$Favorite.Color= as.factor(veriseti$Favorite.Color)
+veriseti$Favorite.Color <- factor(veriseti$Favorite.Color,levels=c("Cool","Neutral", "Warm"),
+   labels=c("cool","neutral","warm"))
+veriseti$Favorite.Music.Genre <- factor(veriseti$Favorite.Music.Genre,levels=c("Pop","Rock", "Jazz/Blues", "Folk/Traditional","R&B and soul", "Electronic", "Hip hop"),
+   labels=c("pop", "rock","jazz/blues","folk/traditional","r&b and soul","electronic","hiphop"))
+veriseti$Favorite.Music.Genre=as.factor(veriseti$Favorite.Music.Genre)
+veriseti$Gender <- factor(veriseti$Gender,levels=c("F", "M"),
+   labels=c("female","male"))
+veriseti$Gender=as.factor(veriseti$Gender)
+```
+
+Burada ilk olarak favori müzik türünü tercih edenleri cinsiyetlerine göre ayrıştırarak hangi müzik türlerini hangi cinsiyetteki insanların diğerlerine oranla tercih ettiğine dair bir bar plot çizdirdik. 
+
+Bu grafiğe göre gözlemlerin rastgele seçilmiş olması da göz önünde bulundurularak her türdeki müzik türünde o türü tercih eden kadın miktarının erkeklere oranla daha fazla olduğu sonucuna varabiliriz.
+
+```{r message=FALSE, warning=FALSE}
+ggplot(data =veriseti, aes(x =Favorite.Music.Genre, color = Gender, alpha= (0.5))) +
+    geom_bar()
+```
+
+Bu grafik ise favori içeceklere göre gruplandırılmış, favori müzik türüne göre çizdirilmiş olan bir yoğunluk grafiği. 
+Göründüğü gibi içecek tercih etmeyenler arasında müzik türü seçimine göre sabit bir yayılım göze çarpıyor. Onun dışında viski ve şarabı daha çok tercih edenlerin genel olarak pop, rock, jazz tercih ettiği de görülmüştür.
+
+```{r message=FALSE, warning=FALSE}
+qplot(Favorite.Music.Genre, data=veriseti, geom="density", fill=Favorite.Beverage, alpha=I(.5),
+   main="Distribution of Gas Milage", xlab="Miles Per Gallon",
+   ylab="Density")
+```
+
+Burada ise alkollü ve alkolsüz içecekleri kendi aralarında kıyaslaybilmek için bar plot çizdirdik. göründüğü gibi tercih edilme değerleri birbirine yakın çıkmıştır. Ek olarak cinsiyet değişkeni için de grafik üzerine ekleme yaptık. Genel olarak içecek ve cinsiyet inn normal dağılım söz konusudur.
+
+```{r message=FALSE, warning=FALSE}
+veriseti$Favorite.Music.Genre<-as.factor(veriseti$Favorite.Music.Genre)
+ggplot(veriseti, aes(x = Favorite.Beverage, y = Favorite.Soft.Drink)) +
+  stat_summary(geom = "bar", fill = "skyblue") +
+  geom_jitter(aes(colour = Gender), linetype = 2)
+```
+
+ Veri setimizden hem favori müzik rengi ve cinsiyet arasındaki ilişkiyi hem de bu ilişki ve favori müzik türü-favori içecek arasındaki ilişkiyi göstermesi amacıyla geom ribbon grafiği çizdirdik. 
+
+```{r message=FALSE, warning=FALSE}
+veriseti$Favorite.Color<-as.factor(veriseti$Favorite.Color)
+ggplot(veriseti, aes(x = Favorite.Music.Genre, y = Favorite.Soft.Drink, color = Favorite.Color, group =Gender, fill = Gender)) +
+  stat_summary(geom = "line") +
+  stat_summary(fun.args = list(Gender = F), geom = "ribbon", alpha = 0.1, color = NA)
+```
+
+ Başka bir veri seti olarak ise 2010'lar yılındaki en iyi 50 şarkıdan oluşan müzik verilerini barındıran bir veri seti ile ilgilendik. 
+
+```{r message=FALSE, warning=FALSE}
+Top50<-read_csv("C:/Users/tured/OneDrive/Belgeler/top10s.csv")
+head(Top50)
+```
+En popüler 10 şarkıcıyı ve şarkıyı görüntüleyelim:
+
+```{r message=FALSE, warning=FALSE}
+Popularity<-Top50 %>% arrange(desc(pop)) 
+head(Popularity,10)
+```
+
+```{r message=FALSE, warning=FALSE}
+ggplot(head(Popularity,10),aes(artist,pop))+geom_point(size=3,color="orange")
+
+```
+
+Maroon5 2010-2019 yılları arasında en yüksek popülerliği olan şarkıya sahipmiş 
+Lizzo ve Marshmello'nun şarkıları aynı derece popülerliğe ve bu 10 şarkı arasından en az popülerliğe sahipmiş.
+
+Şimdi bu 10 şarkı için bulduğumuz popülerliğin tüm şarkılar için en düşük popülerliğini bulacak bir kod yazdıralım. 
+
+```{r message=FALSE, warning=FALSE}
+popazalan<-Top50 %>% arrange(pop)
+head(popazalan,10)
+```
+Popülerliği azalan sıraya göre dizdiğimiz bu şarkıların saçılım grafiğinde en düşük popülerliğe sahip şarkıcının ismini gösterelim:
+
+```{r message=FALSE, warning=FALSE}
+gplot<-ggplot(head(popazalan,10),aes(artist,pop))+geom_point(size=2)
+p<-gplot+geom_text(aes(label=ifelse(pop==min(pop),as.character(artist),'')),hjust=0,vjust=0)
+p
+```
+Adele, Fergie , Justin Timberlake , Martin Solveig , P!nk şarkıcılarının 2010-2019 yılları arasında ki şarkıları'nın popülerliğinin 0 olduğunu görüyoruz.
+
+Bu şarkıcılardan Adele ve Justin Timberlake diğer şarkıcılara göre daha çok tanınmaktadır. Bu tanınan şarkıcıların 2010-2019 yılları arasında başka şarkıları var mı varsa da popülerliğini gösteren bir grafik oluşturalım.
+
+```{r message=FALSE, warning=FALSE}
+AnJ<-Top50%>%filter(artist==c("Adele","Justin Timberlake"))
+AnJ
+
+ggplot(AnJ,aes(pop,title))+geom_point(aes(color=artist))+theme(axis.text.y= element_text
+                              (angle = 50))
+```
+
+Adel'in 2010 ve 2019 yılları arasında spotifyda 6 şarkısı olduğunu ve bunların 3'ünün popülerliğinin 50 den fazla olduğunu görüyoruz.
+Justin Timberlake'in 2010 ve 2019 yılları arasında spotifyda 5 şarkısı olduğunu ve bunların 4 ünün popülerliğinin 50 den fazla olduğunu görüyoruz.
+
+
+```{r message=FALSE, warning=FALSE}
+Year<-lubridate::ymd(Top50$year, truncated = 2L)
+ggplot(Top50,aes(Year,dB,fill=Year))+geom_col()
+```
+
+2012 yılında ki şarkıların seslerinin daha yüksek olduğu sonucuna varabiliriz. 
+2012 deki şarkıları görüntüleyip hangi sanatçıların yüksek sesli müzik yaptığını bulalım.
+
+```{r message=FALSE, warning=FALSE}
+newDt<-Top50%>%filter(year==2012)%>%arrange(desc(dB))%>%select(title,artist,dB,year,pop,dnce)
+head(newDt)
+library(plotrix)
+OneDirection<-sum(newDt$pop[which(newDt$artist=="One Direction")])
+NickiMinaj<-sum(newDt$pop[which(newDt$artist=="Nicki Minaj")])
+slices<-c(OneDirection,NickiMinaj)
+lbls<-c("OneDirection","NickiMinaj")
+pct<-round(slices/sum(slices)*100)
+lbls = paste(lbls,pct)
+lbls = paste(lbls,"%",sep = "")
+pie(slices, labels = lbls,main = "Popülerlik"
+,col = c("plum1","slateblue4"))
+```
+
+dB si en yüksek yani en sesli müziğin olduğu iki sanatçının popülerliğini karşılaştırdığımızda One Direction'ın popülerliğinin Nicki Minaj'dan %4 fazla olduğu sonucuna varıyoruz.
+
+```{r message=FALSE, warning=FALSE}
+ggplot(Top50,aes(Year,nrgy,fill=pop))+geom_col()
+```
+
+En düşük enerjili şarkılar 2019 yılındaki şarkılar olduğunu görüyoruz. En yüksek enerjili şarkıların 2015 yılındaki şarkılar olduğunu görüyoruz.
+
+
+Yüksek 'akustik' olan sarkilar cogunlukla dogal akustik seslerden (akustik gitar, piyano, orkestra) olusurken, dusuk 'akustik' olan sarkilar cogunlukla elektrik seslerinden (elektrikli gitarlar, sentezleyiciler) olusur. (otomatik ayarli vokaller vb.). Akustiklige gore sarkilari siralayalim.
+
+```{r message=FALSE, warning=FALSE}
+Akustik<-Top50%>%arrange(acous)%>%select(title,artist,acous)
+head(Akustik)
+```
+
+Lady Gaganın Bad Romance şarkısının akustiği en düşük şarkılardandır. Yani buradan bu şarkının elektrikli seslerden oluştuğunu söyleyebiliriz.
+
+Enerji ve akustiğe göre saçılım grafiği oluşturalım. 
+
+```{r message=FALSE, warning=FALSE}
+ggplot(Top50,aes(x=nrgy,y=acous))+geom_point(colour = "brown" , size=3 )+theme(axis.text.x = element_text
+                              (angle = 90))
+```
+
+Bu oluşan grafikte Lady Gaga'nın şarkılarını başka bir renkte gösterelim:
+
+```{r message=FALSE, warning=FALSE}
+Top50$sarkici<-NA
+Top50$sarkici[which(Top50$artist=="Lady Gaga")]<-"Lady Gaga"
+Top50$sarkici[which(Top50$artist!="Lady Gaga")]<-"diger"
+ggplot(Top50,aes(x=nrgy,y=acous,shape=factor(sarkici)))+geom_point(aes
+    (colour=factor(sarkici)))+theme(axis.text.x = element_text(angle = 90))
+```
+Lady Gaga'nın  akustiği düşük olan şarkılarının enerjilerinin daha yüksek olduğunu görmekteyiz.
+
+Kullanacağımız diğer bir veri seti de kendi arasında ayrıştırılan verilerden oluşan bir veri seti. 
+
+```{r message=FALSE, warning=FALSE}
+spotify<-read.csv("C:/Users/tured/OneDrive/Belgeler/data.csv")
+spotifyTbl<-tbl_df(spotify);spotifyTbl
+spotifyArt<-read.csv("C:/Users/tured/OneDrive/Belgeler/data_by_artist.csv")
+spotifyArtTbl<-tbl_df(spotifyArt);spotifyArtTbl
+spotifyGenre<-read.csv("C:/Users/tured/OneDrive/Belgeler/data_by_genres.csv")
+spotifyGenreTbl<-tbl_df(spotifyGenre);spotifyGenreTbl
+spotifyYear<-read.csv("C:/Users/tured/OneDrive/Belgeler/data_by_year.csv")
+spotifyYearTbl<-tbl_df(spotifyYear);spotifyYearTbl
+spotifyGenreW<-read.csv("C:/Users/tured/OneDrive/Belgeler/data_w_genres.csv")
+spotifyGenreWTbl<-tbl_df(spotifyGenreW);spotifyGenreWTbl
+```
+
+Akustik şarkıların oranının çok değişkenlik gösterdiğini düşündüğümüzden dolayı filtrelemek istedik;
+
+Şarkıların akustiklerinin 0.5'ten büyük olanlarınım popülerliği yüksek olanlara göre sıralattırdıktan sonra oluşturuğumuz yeni verinin dans edilebilirliğine göre yoğunluk grafiğini çıkartıp incelemek istedik.
+
+```{r message=FALSE, warning=FALSE}
+deneme<-spotifyTbl%>%filter(acousticness>0.5)%>%arrange(desc(popularity))
+ggplot(deneme,aes(x=danceability))+geom_density()
+```
+R session belli bir süre sonra kullanılan grafikleri ve yapılan işlemlerden sonra otomatik olarak verilen belli bir sınırlı hafızayı aştığımız için hafıza limiti arttırdık.
+
+```{r message=FALSE, warning=FALSE}
+memory.limit(24231)
+```
+
+Yıllara göre şarkılarının dans edilebilirlik puanlandırmalarını tempolarına göre değerlendirdik.
+
+```{r message=FALSE, warning=FALSE}
+ggplot(spotifyYearTbl,aes(year,danceability,fill=tempo))+geom_col()
+```
+
+Tekrardan dans edilebilirliği 0.5'ten büyük olanları seçip fakat bu sefer sanatçıların hangileri olduklarını görebilmek için sanatçı verimizi seçtik. Burda asıl amacımız şarkıların sürelerine göre canlılığı üzerinde etkisi nasıl oluyor onları incelemek istedik. Şarkıların süreleri milisaniye cinsinden verildiği için aynı zamanda kolay anlaşılması üzerine süreleri dakika cinsinden gösteren yeni bir sütun oluşturduk.
+
+```{r message=FALSE, warning=FALSE}
+durationlive<-spotifyArtTbl%>%select(artists,danceability,duration_ms,liveness,popularity)%>%filter(danceability>0.5)%>%mutate(duration_m=duration_ms/60000)%>%arrange(desc(duration_m))
+durationlive
+top10durationlive<-head(durationlive,10);top10durationlive
+```
+Çok uzun süreli şarkıların var olduğunu görebiliyoruz bu doğal olarak dans edilebilirlik ortalamanın üzerinde olsa da canlılığı azaltmış durumda. Canlılığında 0.5'ten yüksek olan şarkıların sürelerine bakıp hangi sanatçılar tarafından yapıldığını bulmak istersek;
+
+```{r message=FALSE, warning=FALSE}
+liveness05<-durationlive%>%filter(liveness>0.5)
+liveness10<-head(liveness05,10);liveness10
+```
+
+```{r message=FALSE, warning=FALSE}
+ggplot(liveness10,aes(duration_m,liveness,fill=artists))+geom_bar(stat = "identity")
+
+```
+Canlılık arttıkça sürelerinde azaldığını görüyoruz ve ayrıca daha az sürelerde popülerlik de artıyor gibi görünüyor.
+
+Popülerlik arttıkça sürelerdeki değişim nasıl oluyor incelemek istersek;
+
+```{r message=FALSE, warning=FALSE}
+livepop<-liveness05%>%arrange(desc(popularity));livepop
+```
+
+```{r message=FALSE, warning=FALSE}
+ggplot(livepop,aes(duration_m,popularity))+geom_smooth()
+```
+
+
+yıllara göre enerji yoğunluğu;
+
+```{r message=FALSE, warning=FALSE}
+par(mfrow=c(2,2))
+Newdt<-spotifyYearTbl%>%filter(year<=1944)
+d <- density(Newdt$energy)
+plot(d, main="Energy Density of 1921-1944")
+polygon(d, col="grey", border="white")
+
+Newdt2<-spotifyYearTbl%>%filter(year<=2000 & year>1944)
+d1<- density(Newdt2$energy)
+plot(d1, main="Energy Density of 1945-2000")
+polygon(d1, col="grey", border="white")
+
+Newdt3<-spotifyYearTbl%>%filter(year<=2020 & year>2000)
+d2<- density(Newdt3$energy)
+plot(d2, main="Energy Density of 2000-2020")
+polygon(d2, col="grey", border="white")
+```
+
+1921-1944 yılları arasındaki şarkıların enerjileri diğer yıllara göre daha düşük enerjili şarkılar iken günümüz yani 2000-2020 yılları arasındaki şarkılar daha enerjik şarkılardır. 1945-2000 li yıllar arasında şarkıların hem düşük hem yüksek enerjiye sahip olduğu gözlenmektedir. 
+
+
+```{r message=FALSE, warning=FALSE}
+par(mfrow=c(2,2))
+System<-spotify%>%
+filter(artists=="['System Of A Down']")
+
+ggplot(System,aes(year, popularity, fill="pink",))+geom_col()+labs(
+       title ="System Of A Down Popularity")
+
+
+
+Lil<-spotify%>%
+filter(artists=="['Lil Wayne']")
+
+ggplot(Lil,aes(year, popularity, fill="pink"))+geom_col()+labs(
+       title ="Lil Wayne Popularity")
+
+
+Stan<-spotify%>%
+filter(artists=="['Eminem']")
+
+ggplot(Stan,aes(year, popularity, fill="pink"))+geom_col()+labs(
+       title ="Eminem Popularity")
+
+
+M<-spotify%>%
+filter(artists=="['Metallica']")
+
+ggplot(M,aes(year, popularity, fill="pink"))+geom_col()+labs(
+       title ="Metallica Popularity")
+
+```
+
+Dünyaca popüler bazı sanatçıların popülerliğini kıyaslamak için bir grafik oluşturduk. Oluşturduğumuz bu grafikte Eminem'in diğer seçtiğimiz sanatçılardan daha popüler olduğunu görmekteyiz. System of A Down grubu 2000li yıllarda popülerliğe sahipken Eminem, Metallica ve Lil Wayne uzun geçmişten günümüze belirli alarıklarla uzun süreli popülerliğe sahiptirler.
+
+Başka bir veri setimiz ise mental sağlık verilerinden oluşan bir veri setidir. 
+
+```{r message=FALSE, warning=FALSE}
+master_song_data <- read.csv("C:/Users/tured/OneDrive/Belgeler/master_song_data.csv")
+```
+
+```{r message=FALSE, warning=FALSE}
+summary(master_song_data)
+length(master_song_data)
+```
+Summary koduyla verisetimizi çalıştırdığımızda verimizin 206 gözlemi olduğunu ve 15 değişkeni olduğunu görüyoruz.
+
+```{r message=FALSE, warning=FALSE}
+table(master_song_data$Audio_class)
+table(master_song_data$Mental_health_severity_class)
+```
+ Verimizde toplam 29 mutlu, 48 rahat, 106 üzgün,23 gergin müzik olduğunu görüyoruz. Burdan şu sonuca varabiliriz ki insanlar genelllikle üzgün ve melankolik yapıda ve hep bu tarz müzik dinlemeye yöneliyorlar.
+ Ayrıca veri setimizde akıl sağlığı şiddetine değişkenine göre akıl sağlığı iyi olanların saysı 21, akıl sağlığı seviyesi düşük olanlar 42 ve akıl sağlığı ortalama olan 143 gözlem olduğunu görüyoruz.
+
+
+```{r message=FALSE, warning=FALSE}
+ggplot(master_song_data, aes(x= Danceability, y=Audio_class))+geom_smooth(col="red")
+```
+ Bu tablodan şu sonucu çıkartabiliriz müzik duygu türü mutluyken dans edebilme oranı fazla iken müzik duygu türü kötüyken dans edilebilme oranı daha az oluyor.
+
+```{r message=FALSE, warning=FALSE}
+ggplot(data = master_song_data) +
+geom_point(mapping = aes(x = Danceability, y = Mental_health_severity_class)) +
+facet_wrap(~ `Audio_class`)+theme_classic()
+
+```
+ Bu tablomuza göre ise sakinken ve akıl sağlık seviyemiz ortalamayken dansedilebilirlik oranımız daha fazla oluyor.
+
+```{r message=FALSE, warning=FALSE}
+ggplot(master_song_data,aes(x=Audio_class,y=Audio...Lyrics.analysis,fill=Artist)) +geom_col()
+```
+ Bu grafikte ise hangi şarkıcıların hangi hangi duygu durumuna göre şarkı yaptığını görüyoruz ve grafiğimize göre şarkıcılar en çok üzgün şarkı ortaya çıkarma eğilimindedir. (grafikler başka bir yazılım programı kullanıldığı için sunumdadır ama kategorileri bu şekildedir.)
+
+```{r message=FALSE, warning=FALSE}
+y <- master_song_data %>% group_by(Audio_class)
+ggplot(data=y,aes(x=Audio_class,y=Loudness)) + geom_col(aes(fill=Audio_class)) + coord_flip() + theme_minimal() + theme(legend.position = "none")
+```
+ Bu grafiğimizde ise en çok üzgünken yüksek sesle müzik dinlendiğini ve gerginken en düşük ses seviyesinde müzik dinlediğini görüyoruz. 
+
+```{r message=FALSE, warning=FALSE}
+ggplot(master_song_data, aes(Danceability))+ geom_histogram(fill= "white", col="red")
+
+```
+
+Burada ise dansedilebilirlikle ilgili bir histogram gradiği çizdik. Bu grafiğe göre de 0.25 seviyesiyle 0.5 seviyesi arasında dansedilebilirlik oranı en yüksektir.
+
+```{r message=FALSE, warning=FALSE}
+qplot(Mental_health_severity_class, data=master_song_data, geom="density", fill=Audio...Lyrics.analysis, alpha=I(.5),
+   ylab="Density")
+
+```
+ Bu grafiğimizde ise müziklerin sözlerinin hangi duyguya hitap ettiğiyle ilgili bir çalışma yaptık. Grafiğimize göre ise şarkı sözlerinin anlamlarına karşılık gelen duygular arasında daha yaygın olarak üzgün şarkı sözleri bulunmaktadır.
+
+```{r message=FALSE, warning=FALSE}
+qplot(Danceability, data=master_song_data, geom="density", fill=Mental_health_severity_class, alpha=I(.4))
+```
+ Burada oluşturduğumuz yoğunluk grafiğe göre dansedilebilirlik oranının en çok mutlu olduğunda ve en az üzgün olduğunda görebiliyoruz.
+ 
+
+
+ 
+
